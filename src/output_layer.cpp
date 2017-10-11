@@ -205,9 +205,7 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
   }
 
   MPI_Wait(&halt_loader_request, &halt_loader_status);
-
   MPI_Ibcast(&halt_output, 1, MPI_INT, rank, MPI_COMM_WORLD, &halt_output_request);
-
   MPI_Wait(&halt_output_request, &halt_output_status);
 
   MPI_Group_free(&world_group);

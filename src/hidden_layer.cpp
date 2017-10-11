@@ -118,7 +118,7 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr) {
   std::queue<float*> output_queue;
 
   while(!(halt_loader && halt_output) || input_queue.size() > 0) {
-    if(halt_loader) {
+    if(halt_loader && halt_output_request != MPI_REQUEST_NULL) {
       MPI_Ibcast(&halt_output, 1, MPI_INT, last, MPI_COMM_WORLD, &halt_output_request);
     }
 
@@ -200,9 +200,6 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr) {
       delete[] error;
     }
   }
-
-  MPI_Wait(&halt_loader_request, &halt_loader_status);
-  MPI_Wait(&halt_output_request, &halt_output_status);
 
   MPI_Group_free(&world_group);
   MPI_Group_free(&layer_group);
