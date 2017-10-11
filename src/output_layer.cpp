@@ -1,11 +1,11 @@
 #include "output_layer.hpp"
 
 #include <iostream>
-#include <random>
 #include <queue>
 #include <cmath>
 #include "mpi.h"
 #include "Eigen/Core"
+#include "random.hpp"
 
 Eigen::VectorXf softmax(Eigen::VectorXf v) {
   Eigen::VectorXf max = Eigen::VectorXf::Ones(v.size()) * v.maxCoeff();
@@ -25,7 +25,6 @@ float accuracy(Eigen::MatrixXf y, Eigen::MatrixXf t) {
   }
   return total / y.rows();
 }
-
 
 float cross_entropy(Eigen::MatrixXf y, Eigen::MatrixXf t) {
   return -(y.array() * ((t.array() + 1e-10f).log())).sum() / t.rows();
@@ -103,21 +102,18 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
   int ready = false;
 
   /* Setup layer */
-  std::random_device rd;
-  std::mt19937 rng(rd());
-
   std::size_t i, j;
 
   float stdW = 1. / sqrt(static_cast<float>(n_input));
 
-  std::normal_distribution<float> genW(0.0, stdW);
+  Normal genW(0.0, stdW);
 
   Eigen::MatrixXf W(n_input, n_output);
   Eigen::VectorXf b(n_output);
 
   for(j = 0; j < n_output; ++j) {
     for(i = 0; i < n_input; ++i) {
-      W(i, j) = genW(rng);
+      W(i, j) = genW();
     }
     b(j) = 0.0;
   }
@@ -182,7 +178,12 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
         MPI_Ibcast(e.data(), output_size, MPI_FLOAT, rank - 1, layer_comm, &output_request);
 
         Eigen::MatrixXf d_W = -x.transpose() * e;
+
         W += d_W * lr;
+
+        for(i = 0; i < e.cols(); ++i) {
+          b(i) += e.col(i).sum();
+        }
 
         delete[] input;
         delete[] label;
@@ -214,5 +215,4 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
   MPI_Group_free(&prev_group);
   MPI_Comm_free(&layer_comm);
   MPI_Comm_free(&prev_comm);
-
 }

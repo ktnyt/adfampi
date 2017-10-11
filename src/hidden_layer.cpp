@@ -1,10 +1,10 @@
 #include "hidden_layer.hpp"
 
-#include <random>
 #include <queue>
 #include <cmath>
 #include "mpi.h"
 #include "Eigen/Core"
+#include "random.hpp"
 
 float sigmoid(float x) {
   return tanh(x * 0.5f) * 0.5f + 0.5f;
@@ -91,16 +91,13 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr) {
   int ready = false;
 
   /* Setup layer */
-  std::random_device rd;
-  std::mt19937 rng(rd());
-
   std::size_t i, j;
 
   float stdW = 1. / sqrt(static_cast<float>(n_input));
   float stdB = 1. / sqrt(static_cast<float>(n_final));
 
-  std::normal_distribution<float> genW(0.0, stdW);
-  std::normal_distribution<float> genB(0.0, stdB);
+  Normal genW(0.0, stdW);
+  Normal genB(0.0, stdB);
 
   Eigen::MatrixXf W(n_input, n_output);
   Eigen::MatrixXf B(n_final, n_output);
@@ -108,10 +105,10 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr) {
 
   for(j = 0; j < n_output; ++j) {
     for(i = 0; i < n_input; ++i) {
-      W(i, j) = genW(rng);
+      W(i, j) = genW();
     }
     for(i = 0; i < n_final; ++i) {
-      B(i, j) = genB(rng);
+      B(i, j) = genB();
     }
     b(j) = 0.0;
   }
@@ -191,7 +188,12 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr) {
 
       Eigen::MatrixXf d_x = (e * B).array() * y.unaryExpr(&dsigmoid).array();
       Eigen::MatrixXf d_W = -x.transpose() * d_x;
+
       W += d_W * lr;
+
+      for(i = 0; i < d_x.cols(); ++i) {
+        b(i) += d_x.col(i).sum() * lr;
+      }
 
       delete[] input;
       delete[] output;

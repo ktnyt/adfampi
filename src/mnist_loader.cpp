@@ -1,10 +1,9 @@
 #include "mnist_loader.hpp"
 
-#include <random>
-#include <algorithm>
 #include "mpi.h"
 #include "Eigen/Core"
 #include "mnist.hpp"
+#include "random.hpp"
 
 void invoke_mnist_loader(int rank, int last, int epochs, int batchsize) {
   MPI_Group world_group;
@@ -34,9 +33,6 @@ void invoke_mnist_loader(int rank, int last, int epochs, int batchsize) {
     perm[i] = i;
   }
 
-  std::random_device rd;
-  std::mt19937 rng(rd());
-
   int rows = mnist.train_images.rows;
   int cols = mnist.train_images.cols;
   int dims = rows * cols;
@@ -54,7 +50,7 @@ void invoke_mnist_loader(int rank, int last, int epochs, int batchsize) {
 
   /* Start iteration */
   for(int epoch = 0; epoch < epochs; ++epoch) {
-    std::shuffle(perm, perm + length, rng);
+    shuffle(perm, perm + length);
     mnist.reorder(perm);
 
     for(int i = 0; i < mnist.train_length; i += batchsize) {
