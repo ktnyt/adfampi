@@ -20,13 +20,14 @@ int main(int argc, char* argv[]) {
   int n_output = 10;
 
   float lr = 0.05;
+  float decay = 0.9995;
 
   if(rank == root) {
     invoke_mnist_loader(rank, last, epochs, batchsize);
   } else if(rank == last) {
     invoke_output_layer(rank, root, n_output, lr);
   } else {
-    invoke_hidden_layer(rank, root, last, n_hidden, lr);
+    invoke_hidden_layer(rank, root, last, n_hidden, lr, decay);
   }
   
   MPI_Finalize();

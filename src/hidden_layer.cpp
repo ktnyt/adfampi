@@ -1,5 +1,6 @@
 #include "hidden_layer.hpp"
 
+#include <iostream>
 #include <queue>
 #include <cmath>
 #include "mpi.h"
@@ -14,9 +15,14 @@ float dsigmoid(float y) {
   return y * (1.0f - y);
 }
 
-void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr) {
+float mean_squared_error(Eigen::MatrixXf y, Eigen::MatrixXf t) {
+  Eigen::MatrixXf d = y - t;
+  Eigen::VectorXf f(Eigen::Map<Eigen::VectorXf>(d.data(), d.cols()*d.rows()));
+  return f.dot(f) / d.size();
+}
+
+void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, float decay) {
   float aelr = lr;
-  float decay = 0.9995;
 
   /* Setup communicators */
   MPI_Group world_group;
@@ -105,10 +111,12 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr) {
   Eigen::MatrixXf W(n_input, n_output);
   Eigen::MatrixXf B(n_final, n_output);
   Eigen::VectorXf b(n_output);
+  Eigen::VectorXf c(n_input);
 
   for(j = 0; j < n_output; ++j) {
     for(i = 0; i < n_input; ++i) {
       W(i, j) = genW();
+      if(j == 0) c(i) = 0.0;
     }
     for(i = 0; i < n_final; ++i) {
       B(i, j) = genB();
@@ -153,11 +161,25 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr) {
         y.noalias() = a.unaryExpr(&sigmoid);
 
         {
-          Eigen::MatrixXf z = (y * W.transpose()).unaryExpr(&sigmoid);
-          Eigen::MatrixXf d_h2 = x - z;
-          Eigen::MatrixXf d_h1 = (d_h2 * W).array() * y.array() * (1 - y.array());
-          Eigen::MatrixXf d_W = (x.transpose() * d_h1) + (d_h2.transpose() * y);
+          Eigen::MatrixXf t = y * W.transpose();
+          t.transpose().colwise() += c;
+          Eigen::MatrixXf z = t.unaryExpr(&sigmoid);
+
+          Eigen::MatrixXf d_z = z - x;
+          Eigen::MatrixXf d_y = (d_z * W).array() * y.unaryExpr(&dsigmoid).array();
+
+          Eigen::MatrixXf d_W = -(x.transpose() * d_y + d_z.transpose() * y);
+  
           W += d_W * aelr;
+
+          for(i = 0; i < d_y.cols(); ++i) {
+            b(i) += d_y.col(i).sum() * aelr;
+          }
+
+          for(i = 0; i < d_z.cols(); ++i) {
+            c(i) += d_z.col(i).sum() * aelr;
+          }
+
           aelr *= decay;
         }
 
