@@ -4,9 +4,7 @@
 #include <sstream>
 #include <exception>
 #include <stdexcept>
-
 #include <cassert>
-#include <cstdint>
 
 template<typename T>
 void print_mnist(T* image, T* label) {
@@ -38,7 +36,7 @@ struct MNIST {
       std::streampos size;
       char* buffer;
 
-      std::ifstream file(filename,std::ios::in | std::ios::binary | std::ios::ate);
+      std::ifstream file(filename.c_str(), std::ios::in | std::ios::binary | std::ios::ate);
       std::ostringstream os;
 
       if(!file.is_open()) {
@@ -169,7 +167,7 @@ struct MNIST {
       std::streampos size;
       char* buffer;
 
-      std::ifstream file(filename,std::ios::in | std::ios::binary | std::ios::ate);
+      std::ifstream file(filename.c_str(), std::ios::in | std::ios::binary | std::ios::ate);
       std::ostringstream os;
 
       if(!file.is_open()) {

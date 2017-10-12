@@ -15,6 +15,9 @@ float dsigmoid(float y) {
 }
 
 void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr) {
+  float aelr = lr;
+  float decay = 0.9995;
+
   /* Setup communicators */
   MPI_Group world_group;
   MPI_Comm_group(MPI_COMM_WORLD, &world_group);
@@ -149,13 +152,14 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr) {
 
         y.noalias() = a.unaryExpr(&sigmoid);
 
-        /*{
+        {
           Eigen::MatrixXf z = (y * W.transpose()).unaryExpr(&sigmoid);
           Eigen::MatrixXf d_h2 = x - z;
           Eigen::MatrixXf d_h1 = (d_h2 * W).array() * y.array() * (1 - y.array());
           Eigen::MatrixXf d_W = (x.transpose() * d_h1) + (d_h2.transpose() * y);
-          W += d_W * lr;
-        }*/
+          W += d_W * aelr;
+          aelr *= decay;
+        }
 
         input_queue.push(input);
         output_queue.push(output);
