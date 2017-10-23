@@ -112,9 +112,9 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
   float stdU = 1. / sqrt(static_cast<float>(n_output));
   float stdB = 1. / sqrt(static_cast<float>(n_final));
 
-  Normal genW(0.0, stdW);
-  Normal genU(0.0, stdU);
-  Normal genB(0.0, stdB);
+  Uniform genW(-stdW, stdW);
+  Uniform genU(-stdU, stdU);
+  Uniform genB(-stdB, stdB);
 
   Eigen::MatrixXf W(n_input, n_output);
   Eigen::MatrixXf U(n_output, n_input);
@@ -191,11 +191,11 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
           iter += 1;
 
           for(i = 0; i < d_y.cols(); ++i) {
-            //b(i) += d_y.col(i).sum() * aelr;
+            b(i) += d_y.col(i).sum() * aelr;
           }
 
           for(i = 0; i < d_z.cols(); ++i) {
-            //c(i) += d_z.col(i).sum() * aelr;
+            c(i) += d_z.col(i).sum() * aelr;
           }
 
           aelr *= decay;
@@ -236,7 +236,7 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
       W += d_W * lr;
 
       for(i = 0; i < d_x.cols(); ++i) {
-        //b(i) += d_x.col(i).sum() * lr;
+        b(i) += d_x.col(i).sum() * lr;
       }
 
       delete[] input;

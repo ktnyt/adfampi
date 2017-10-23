@@ -106,7 +106,7 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
 
   float stdW = 1. / sqrt(static_cast<float>(n_input));
 
-  Normal genW(0.0, stdW);
+  Uniform genW(-stdW, stdW);
 
   Eigen::MatrixXf W(n_input, n_output);
   Eigen::VectorXf b(n_output);
