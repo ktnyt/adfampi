@@ -17,6 +17,14 @@ void shuffle(int* begin, int* end) {
   }
 }
 
+Uniform::Uniform(float min, float max) : min(min), max(max) {
+  init_genrand64(time(NULL));
+}
+
+float Uniform::operator()() {
+  return genrand64_real2() * (max - min) + min;
+}
+
 Normal::Normal(float mu, float sigma) : mu(mu), sigma(sigma), has_w(false) {
   init_genrand64(time(NULL));
 }

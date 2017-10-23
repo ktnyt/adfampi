@@ -109,12 +109,15 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
   std::size_t i, j;
 
   float stdW = 1. / sqrt(static_cast<float>(n_input));
+  float stdU = 1. / sqrt(static_cast<float>(n_output));
   float stdB = 1. / sqrt(static_cast<float>(n_final));
 
   Normal genW(0.0, stdW);
+  Normal genU(0.0, stdU);
   Normal genB(0.0, stdB);
 
   Eigen::MatrixXf W(n_input, n_output);
+  Eigen::MatrixXf U(n_output, n_input);
   Eigen::MatrixXf B(n_final, n_output);
   Eigen::VectorXf b(n_output);
   Eigen::VectorXf c(n_input);
@@ -122,6 +125,7 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
   for(j = 0; j < n_output; ++j) {
     for(i = 0; i < n_input; ++i) {
       W(i, j) = genW();
+      U(j, i) = genU();
       if(j == 0) c(i) = 0.0;
     }
     for(i = 0; i < n_final; ++i) {
@@ -170,7 +174,7 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
         y.noalias() = a.unaryExpr(&sigmoid);
 
         {
-          Eigen::MatrixXf t = y * W.transpose();
+          Eigen::MatrixXf t = y * U;
           t.transpose().colwise() += c;
           Eigen::MatrixXf z = t.unaryExpr(&sigmoid);
 
@@ -179,9 +183,11 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
           Eigen::MatrixXf d_z = z - x;
           Eigen::MatrixXf d_y = (d_z * W).array() * y.unaryExpr(&dsigmoid).array();
 
-          Eigen::MatrixXf d_W = -(x.transpose() * d_y + d_z.transpose() * y);
+          Eigen::MatrixXf d_W = -x.transpose() * d_y;
+          Eigen::MatrixXf d_U = -y.transpose() * d_z;
   
           W += d_W * aelr;
+          U += d_U * aelr;
           iter += 1;
 
           for(i = 0; i < d_y.cols(); ++i) {
