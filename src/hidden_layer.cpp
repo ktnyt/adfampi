@@ -21,7 +21,7 @@ float mean_squared_error(Eigen::MatrixXf y, Eigen::MatrixXf t) {
 }
 
 void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, float decay) {
-  float aelr = lr;
+  float aelr = lr * 0.1;
 
   /* Setup communicators */
   MPI_Group world_group;
@@ -168,7 +168,7 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
       if(input_flag) {
         Eigen::Map<Eigen::MatrixXf> x(input, batchsize, n_input);
         Eigen::Map<Eigen::MatrixXf> y(output, batchsize, n_output);
-        Eigen::MatrixXf a = (x * W);
+        Eigen::MatrixXf a = x * W;
         a.transpose().colwise() += b;
 
         y.noalias() = a.unaryExpr(&sigmoid);
@@ -181,7 +181,7 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
           loss += mean_squared_error(z, x);
 
           Eigen::MatrixXf d_z = z - x;
-          Eigen::MatrixXf d_y = (d_z * W).array() * y.unaryExpr(&dsigmoid).array();
+          Eigen::MatrixXf d_y = (d_z * U.transpose()).array() * y.unaryExpr(&dsigmoid).array();
 
           Eigen::MatrixXf d_W = -x.transpose() * d_y;
           Eigen::MatrixXf d_U = -y.transpose() * d_z;
