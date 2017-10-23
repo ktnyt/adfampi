@@ -1,6 +1,5 @@
 #include "hidden_layer.hpp"
 
-#include <iostream>
 #include <queue>
 #include <cmath>
 #include "mpi.h"
@@ -89,6 +88,13 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
   int error_call = 0;
   int error_flag = 0;
 
+  /*  Setup to receive feedback*/
+  float* feedback;
+  MPI_Request feedback_request = MPI_REQUEST_NULL;
+  MPI_Status feedback_status;
+  int feedback_call = 0;
+  int feedback_flag = 0;
+
   /* Setup to send output */
   int output_size = n_output * batchsize;
   float* output;
@@ -128,6 +134,9 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
   std::queue<float*> input_queue;
   std::queue<float*> output_queue;
 
+  float loss = 0.0;
+  int iter = 0;
+
   while(!(halt_loader && halt_output) || input_queue.size() > 0) {
     if(halt_loader && halt_output_request != MPI_REQUEST_NULL) {
       MPI_Ibcast(&halt_output, 1, MPI_INT, last, MPI_COMM_WORLD, &halt_output_request);
@@ -165,19 +174,22 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
           t.transpose().colwise() += c;
           Eigen::MatrixXf z = t.unaryExpr(&sigmoid);
 
+          loss += mean_squared_error(z, x);
+
           Eigen::MatrixXf d_z = z - x;
           Eigen::MatrixXf d_y = (d_z * W).array() * y.unaryExpr(&dsigmoid).array();
 
           Eigen::MatrixXf d_W = -(x.transpose() * d_y + d_z.transpose() * y);
   
           W += d_W * aelr;
+          iter += 1;
 
           for(i = 0; i < d_y.cols(); ++i) {
-            b(i) += d_y.col(i).sum() * aelr;
+            //b(i) += d_y.col(i).sum() * aelr;
           }
 
           for(i = 0; i < d_z.cols(); ++i) {
-            c(i) += d_z.col(i).sum() * aelr;
+            //c(i) += d_z.col(i).sum() * aelr;
           }
 
           aelr *= decay;
@@ -218,7 +230,7 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
       W += d_W * lr;
 
       for(i = 0; i < d_x.cols(); ++i) {
-        b(i) += d_x.col(i).sum() * lr;
+        //b(i) += d_x.col(i).sum() * lr;
       }
 
       delete[] input;

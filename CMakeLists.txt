@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 2.8)
 
+option(ADFA_CIFAR "Build CIFAR classifier" ON)
+
 set(PROJECT_NAME ADFA)
 project(${PROJECT_NAME})
 set(ADFA_VERSION_MAJOR 1)

@@ -1,11 +1,11 @@
-#include "mnist_loader.hpp"
+#include "cifar_loader.hpp"
 
 #include "mpi.h"
 #include "Eigen/Core"
-#include "mnist.hpp"
+#include "cifar.hpp"
 #include "random.hpp"
 
-void invoke_mnist_loader(int rank, int last, int epochs, int batchsize) {
+void invoke_cifar_loader(int rank, int last, int epochs, int batchsize) {
   MPI_Group world_group;
   MPI_Comm_group(MPI_COMM_WORLD, &world_group);
 
@@ -21,21 +21,19 @@ void invoke_mnist_loader(int rank, int last, int epochs, int batchsize) {
   MPI_Bcast(&batchsize, 1, MPI_INT, rank, MPI_COMM_WORLD);
 
   /* Setup dataset */
-  MNIST<float> mnist("mnist");
+  CIFAR<float> cifar("cifar");
 
-  mnist.train_images.scale(1.0 / 255.0);
-  mnist.test_images.scale(1.0 / 255.0);
+  cifar.train->scale(1.0 / 255.0);
+  cifar.test->scale(1.0 / 255.0);
 
-  int length = mnist.train_images.length;
-  int* perm = new int[mnist.train_images.length];
+  int length = cifar.train->length;
+  int* perm = new int[cifar.train->length];
 
   for(int i = 0; i < length; ++i) {
     perm[i] = i;
   }
 
-  int rows = mnist.train_images.rows;
-  int cols = mnist.train_images.cols;
-  int dims = rows * cols;
+  int dims = cifar.train->dims;
   int size = 10;
 
   /* Send input/label size */
@@ -51,11 +49,11 @@ void invoke_mnist_loader(int rank, int last, int epochs, int batchsize) {
   /* Start iteration */
   for(int epoch = 0; epoch < epochs; ++epoch) {
     shuffle(perm, perm + length);
-    mnist.reorder(perm);
+    cifar.train->reorder(perm);
 
-    for(int i = 0; i < mnist.train_length; i += batchsize) {
-      float* images = mnist.train_images.getBatch(i, batchsize);
-      float* labels = mnist.train_labels.getBatch(i, batchsize);
+    for(int i = 0; i < cifar.train->length; i += batchsize) {
+      float* images = cifar.train->getImageBatch(i, batchsize);
+      float* labels = cifar.train->getLabelBatch(i, batchsize);
 
       Eigen::Map<Eigen::MatrixXf> x(images, batchsize, dims);
       Eigen::Map<Eigen::MatrixXf> y(labels, batchsize, size);

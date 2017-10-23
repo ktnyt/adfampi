@@ -269,10 +269,10 @@ struct MNIST {
   };
 
   MNIST(std::string path)
-    : train_images(Images(path + "train-images-idx3-ubyte"))
-    , train_labels(Labels(path + "train-labels-idx1-ubyte"))
-    , test_images(Images(path + "t10k-images-idx3-ubyte"))
-    , test_labels(Labels(path + "t10k-labels-idx1-ubyte"))
+    : train_images(Images(path + "/train-images-idx3-ubyte"))
+    , train_labels(Labels(path + "/train-labels-idx1-ubyte"))
+    , test_images(Images(path + "/t10k-images-idx3-ubyte"))
+    , test_labels(Labels(path + "/t10k-labels-idx1-ubyte"))
   {
     assert(train_images.length == train_labels.length);
     train_length = static_cast<int>(train_images.length);
