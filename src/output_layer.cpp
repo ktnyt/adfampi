@@ -150,7 +150,7 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
         Eigen::Map<Eigen::MatrixXf> x(input, batchsize, n_input);
         Eigen::MatrixXf a = (x * W);
         a.transpose().colwise() += b;
-        Eigen::MatrixXf y = a:
+        Eigen::MatrixXf y = a;
 
         for(i = 0; i < batchsize; ++i) {
           y.row(i) = softmax(y.row(i));
