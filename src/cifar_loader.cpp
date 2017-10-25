@@ -52,10 +52,6 @@ void invoke_cifar_loader(int rank, int last, int epochs, int batchsize) {
     cifar.train->reorder(perm);
 
     for(int i = 0; i < cifar.train->length; i += batchsize) {
-      if(((i / 100) + 1) % 100 == 0) {
-        std::cout << (i / 100) + 1 << std::endl;
-      }
-
       float* images = cifar.train->getImageBatch(i, batchsize);
       float* labels = cifar.train->getLabelBatch(i, batchsize);
 

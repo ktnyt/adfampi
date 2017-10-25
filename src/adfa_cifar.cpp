@@ -27,7 +27,7 @@ int main(int argc, char* argv[]) {
   } else if(rank == last) {
     invoke_output_layer(rank, root, n_output, lr);
   } else {
-    invoke_hidden_layer(rank, root, last, n_hidden, lr, decay, true);
+    invoke_hidden_layer(rank, root, last, n_hidden, lr, decay);
   }
   
   MPI_Finalize();
