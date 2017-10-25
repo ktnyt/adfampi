@@ -150,11 +150,11 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
         Eigen::Map<Eigen::MatrixXf> x(input, batchsize, n_input);
         Eigen::MatrixXf a = (x * W);
         a.transpose().colwise() += b;
-        Eigen::MatrixXf y = a.unaryExpr(&sigmoid);
+        Eigen::MatrixXf y = a:
 
-        //for(i = 0; i < batchsize; ++i) {
-        //  y.row(i) = softmax(y.row(i));
-        //}
+        for(i = 0; i < batchsize; ++i) {
+          y.row(i) = softmax(y.row(i));
+        }
 
         float* label = label_queue.front();
         label_queue.pop();
@@ -167,14 +167,15 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
         batch += 1;
 
         if(batch % 8 == 0) {
-          std::cout << "#" << std::flush;
+          std::cerr << "#" << std::flush;
         }
 
         if(batch % 600 == 0) {
           loss /= batch;
           acc /= batch;
 
-          std::cout << std::endl << loss << " " << acc << std::endl;
+          std::cerr << std::endl;
+          std::cout << loss << " " << acc << std::endl;
 
           loss = 0.0;
           acc = 0.0;

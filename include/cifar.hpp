@@ -91,7 +91,7 @@ struct CIFAR {
         T* tmp = new T[length * 10];
 
         for(int i = 0; i < length; ++i) {
-          T* origin = images + perm[i] * 10;
+          T* origin = labels + perm[i] * 10;
           T* target = tmp + i * 10;
           std::copy(origin, origin + 10, target);
         }
