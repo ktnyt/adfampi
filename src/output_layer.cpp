@@ -6,6 +6,7 @@
 #include "mpi.h"
 #include "Eigen/Core"
 #include "random.hpp"
+#include "activations.hpp"
 
 Eigen::VectorXf softmax(Eigen::VectorXf v) {
   Eigen::VectorXf max = Eigen::VectorXf::Ones(v.size()) * v.maxCoeff();
@@ -148,11 +149,11 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
         Eigen::Map<Eigen::MatrixXf> x(input, batchsize, n_input);
         Eigen::MatrixXf a = (x * W);
         a.transpose().colwise() += b;
-        Eigen::MatrixXf y = a;
+        Eigen::MatrixXf y = a.unaryExpr(&sigmoid);
 
-        for(i = 0; i < batchsize; ++i) {
-          y.row(i) = softmax(y.row(i));
-        }
+        //for(i = 0; i < batchsize; ++i) {
+        //  y.row(i) = softmax(y.row(i));
+        //}
 
         float* label = label_queue.front();
         label_queue.pop();

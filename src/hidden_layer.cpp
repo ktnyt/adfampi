@@ -5,14 +5,7 @@
 #include "mpi.h"
 #include "Eigen/Core"
 #include "random.hpp"
-
-float sigmoid(float x) {
-  return tanh(x * 0.5f) * 0.5f + 0.5f;
-}
-
-float dsigmoid(float y) {
-  return y * (1.0f - y);
-}
+#include "activations.hpp"
 
 float mean_squared_error(Eigen::MatrixXf y, Eigen::MatrixXf t) {
   Eigen::MatrixXf d = y - t;
@@ -20,7 +13,7 @@ float mean_squared_error(Eigen::MatrixXf y, Eigen::MatrixXf t) {
   return f.dot(f) / d.size();
 }
 
-void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, float decay) {
+void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, float decay, bool lock) {
   float aelr = lr * 0.1;
 
   /* Setup communicators */
@@ -208,7 +201,9 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
         MPI_Wait(&barrier_request, &barrier_status);
         MPI_Send(output, output_size, MPI_FLOAT, 1, 0, next_comm);
 
-        ready = false;
+        if(!lock) {
+          ready = false;
+        }
       }
     }
 
@@ -242,6 +237,10 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
       delete[] input;
       delete[] output;
       delete[] error;
+
+      if(lock) {
+        ready = false;
+      }
     }
   }
 

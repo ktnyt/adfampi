@@ -127,6 +127,14 @@ struct CIFAR {
       return buffer;
     }
 
+    T* getImage(int index) {
+      return images + (dims * index);
+    }
+
+    T* getLabel(int index) {
+      return labels + (10 * index);
+    }
+
     void scale(T v) {
       for(int i = 0; i < length * dims; ++i) {
         images[i] *= v;
