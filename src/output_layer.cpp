@@ -95,6 +95,7 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
   /* Setup to send output */
   int output_size = n_output * batchsize;
   MPI_Request output_request;
+  MPI_Status output_status;
 
   /* Setup for barrier */
   MPI_Request barrier_request = MPI_REQUEST_NULL;
@@ -165,11 +166,15 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
         acc += accuracy(y, t);
         batch += 1;
 
+        if(batch % 8 == 0) {
+          std::cout << "#" << std::flush;
+        }
+
         if(batch % 600 == 0) {
           loss /= batch;
           acc /= batch;
 
-          std::cout << loss << " " << acc << std::endl;
+          std::cout << std::endl << loss << " " << acc << std::endl;
 
           loss = 0.0;
           acc = 0.0;
@@ -177,6 +182,8 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
         }
 
         MPI_Ibcast(e.data(), output_size, MPI_FLOAT, rank - 1, layer_comm, &output_request);
+
+        MPI_Wait(&output_request, &output_status);
 
         Eigen::MatrixXf d_W = -x.transpose() * e;
 
