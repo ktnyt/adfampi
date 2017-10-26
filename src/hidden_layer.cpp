@@ -122,6 +122,8 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
     b(j) = 0.0;
   }
 
+  int batch = 0;
+
   /* Setup buffers */
   std::queue<float*> input_queue;
   std::queue<float*> output_queue;
@@ -226,6 +228,16 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
       delete[] input;
       delete[] output;
       delete[] error;
+
+      batch += 1;
+
+      if(batch % 600 == 0) {
+        serialize_matrix(format_name(rank, "W").c_str(), W);
+        serialize_matrix(format_name(rank, "U").c_str(), U);
+        serialize_matrix(format_name(rank, "B").c_str(), B);
+        serialize_vector(format_name(rank, "b").c_str(), b);
+        serialize_vector(format_name(rank, "c").c_str(), c);
+      }
 
       if(lock) {
         ready = false;

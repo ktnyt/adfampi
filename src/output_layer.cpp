@@ -149,6 +149,9 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
         }
 
         if(batch % 600 == 0) {
+          serialize_matrix(format_name(rank, "W").c_str(), W);
+          serialize_vector(format_name(rank, "b").c_str(), b);
+
           loss /= batch;
           acc /= batch;
 
