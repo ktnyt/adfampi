@@ -6,12 +6,7 @@
 #include "Eigen/Core"
 #include "random.hpp"
 #include "activations.hpp"
-
-float mean_squared_error(Eigen::MatrixXf y, Eigen::MatrixXf t) {
-  Eigen::MatrixXf d = y - t;
-  Eigen::VectorXf f(Eigen::Map<Eigen::VectorXf>(d.data(), d.cols()*d.rows()));
-  return f.dot(f) / d.size();
-}
+#include "utils.hpp"
 
 void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, float decay, bool lock) {
   float aelr = lr * 0.1;
@@ -131,9 +126,6 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
   std::queue<float*> input_queue;
   std::queue<float*> output_queue;
 
-  float loss = 0.0;
-  int iter = 0;
-
   while(!(halt_loader && halt_output) || input_queue.size() > 0) {
     if(halt_loader && halt_output_request != MPI_REQUEST_NULL) {
       MPI_Ibcast(&halt_output, 1, MPI_INT, last, MPI_COMM_WORLD, &halt_output_request);
@@ -171,8 +163,6 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
           t.transpose().colwise() += c;
           Eigen::MatrixXf z = t.unaryExpr(&sigmoid);
 
-          loss += mean_squared_error(z, x);
-
           Eigen::MatrixXf d_z = z - x;
           Eigen::MatrixXf d_y = (d_z * U.transpose()).array() * y.unaryExpr(&dsigmoid).array();
 
@@ -181,7 +171,6 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
   
           W += d_W * aelr;
           U += d_U * aelr;
-          iter += 1;
 
           for(i = 0; i < d_y.cols(); ++i) {
             b(i) += d_y.col(i).sum() * aelr;
@@ -243,6 +232,12 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
       }
     }
   }
+
+  serialize_matrix(format_name(rank, "W").c_str(), W);
+  serialize_matrix(format_name(rank, "U").c_str(), U);
+  serialize_matrix(format_name(rank, "B").c_str(), B);
+  serialize_vector(format_name(rank, "b").c_str(), b);
+  serialize_vector(format_name(rank, "c").c_str(), c);
 
   MPI_Group_free(&world_group);
   MPI_Group_free(&layer_group);

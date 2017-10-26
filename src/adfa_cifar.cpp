@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
 
   int root = 0;
   int last = size - 1;
-  int epochs = 20;
+  int epochs = 1000;
   int batchsize = 100;
 
   int n_hidden = 1000;

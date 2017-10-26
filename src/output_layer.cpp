@@ -7,29 +7,7 @@
 #include "Eigen/Core"
 #include "random.hpp"
 #include "activations.hpp"
-
-Eigen::VectorXf softmax(Eigen::VectorXf v) {
-  Eigen::VectorXf max = Eigen::VectorXf::Ones(v.size()) * v.maxCoeff();
-  Eigen::VectorXf r = (v - max).unaryExpr(&expf);
-  return r / r.sum();
-}
-
-float accuracy(Eigen::MatrixXf y, Eigen::MatrixXf t) {
-  float total = 0.0f;
-  for(std::size_t i = 0; i < y.rows(); ++i) {
-    Eigen::MatrixXf::Index max_y, max_t, tmp;
-    y.row(i).maxCoeff(&tmp, &max_y);
-    t.row(i).maxCoeff(&tmp, &max_t);
-    if(max_y == max_t) {
-      total += 1.0;
-    }
-  }
-  return total / y.rows();
-}
-
-float cross_entropy(Eigen::MatrixXf y, Eigen::MatrixXf t) {
-  return -(y.array() * ((t.array() + 1e-10f).log())).sum() / t.rows();
-}
+#include "utils.hpp"
 
 void invoke_output_layer(int rank, int root, int n_output, float lr) {
   MPI_Group world_group;
@@ -174,7 +152,7 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
           loss /= batch;
           acc /= batch;
 
-          std::cerr << std::endl;
+          std::cerr << std::endl << loss << " " << acc << std::endl;
           std::cout << loss << " " << acc << std::endl;
 
           loss = 0.0;
@@ -212,6 +190,9 @@ void invoke_output_layer(int rank, int root, int n_output, float lr) {
       label_queue.push(label);
     }
   }
+
+  serialize_matrix(format_name(rank, "W").c_str(), W);
+  serialize_vector(format_name(rank, "b").c_str(), b);
 
   MPI_Wait(&halt_loader_request, &halt_loader_status);
   MPI_Ibcast(&halt_output, 1, MPI_INT, rank, MPI_COMM_WORLD, &halt_output_request);
