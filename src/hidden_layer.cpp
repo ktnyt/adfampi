@@ -1,6 +1,7 @@
 #include "hidden_layer.hpp"
 
 #include <queue>
+#include <limits>
 #include <cmath>
 #include "mpi.h"
 #include "Eigen/Core"
@@ -10,6 +11,7 @@
 
 void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, float decay, bool lock) {
   float aelr = lr * 0.1;
+  constexpr float epsilon = std::numeric_limits<float>::epsilon();
 
   /* Setup communicators */
   MPI_Group world_group;
@@ -160,7 +162,7 @@ void invoke_hidden_layer(int rank, int root, int last, int n_output, float lr, f
 
         y.noalias() = a.unaryExpr(&sigmoid);
 
-        {
+        if(aelr > epsilon) {
           Eigen::MatrixXf t = y * U;
           t.transpose().colwise() += c;
           Eigen::MatrixXf z = t.unaryExpr(&sigmoid);
