@@ -1,4 +1,5 @@
 #include <iostream>
+#include <iomanip>
 #include <queue>
 #include "mpi.h"
 #include <unistd.h>
@@ -76,7 +77,8 @@ int main(int argc, char* argv[]) {
     }
   }
 
-  int n_steps = epochs * (n_train / batchsize);
+  int steps = epochs * (n_train / batchsize);
+  int batch = 0;
 
   std::queue<MatrixXf> x_queue;
   std::queue<MatrixXf> y_queue;
@@ -88,39 +90,106 @@ int main(int argc, char* argv[]) {
   MPI_Status status;
   MPI_Request request = MPI_REQUEST_NULL;
 
-  Eigen::MatrixXf x(batchsize * batchsize, rows);
-  Eigen::MatrixXf y(batchsize * batchsize, cols);
-
-  y.data()[0] = 0;
-
-  int steps = 4;
-
   for(int step = 0; step < steps + last; ++step) {
-    MPI_Barrier(MPI_COMM_WORLD);
+    MatrixXf x(batchsize, rows);
+    MatrixXf y(batchsize, cols);
 
-    if(rank == root) {
-      std::cout << "Step: " << step << std::endl;
-    } else {
-      usleep(1000 * 10);
+    // Load phase
+    if(step < steps) {
+      if(rank == root) {
+        float* images = mnist.train_images.getBatch(step * batchsize, batchsize);
+        float* labels = mnist.train_labels.getBatch(step * batchsize, batchsize);
+        std::copy(images, images + x.size(), x.data());
+        MPI_Send(labels, label_count, MPI_FLOAT, last, 0, MPI_COMM_WORLD);
+        delete[] images;
+        delete[] labels;
+      }
+
+      if(rank == last) {
+        MatrixXf t(batchsize, cats);
+        MPI_Recv(t.data(), t.size(), MPI_FLOAT, root, 0, MPI_COMM_WORLD, &status);
+        t_queue.push(t);
+      }
     }
 
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // Receive phase
     if(rank < step + 2 && step < steps + rank - 1) {
       if(rank != root) {
-        std::cout << rank << " recv" << std::endl;
         MPI_Recv(x.data(), x.size(), MPI_FLOAT, rank - 1, 0, MPI_COMM_WORLD, &status);
       }
     }
 
+    // Forward phase
     if(rank < step + 1 && step < steps + rank) {
-      if(rank == root) {
-        float* image = mnist.train_images.getBatch(step * batchsize, batchsize);
-        delete[] image;
-      }
+      MatrixXf a = x * W;
+      a.transpose().colwise() += b;
 
       if(rank != last) {
+        y.noalias() = a.unaryExpr(&sigmoid);
         MPI_Send(y.data(), y.size(), MPI_FLOAT, rank + 1, 0, MPI_COMM_WORLD);
-        std::cout << rank << " send " << std::endl;
-        y.data()[0] += 1;
+      } else {
+        for(int i = 0; i < batchsize; ++i) {
+          y.row(i) = softmax(a.row(i));
+        }
+      }
+
+      x_queue.push(x);
+      y_queue.push(y);
+    }
+
+    MatrixXf e(batchsize, cats);
+
+    if(step > last - 1) {
+      if(rank == last) {
+        MatrixXf t = t_queue.front();
+        t_queue.pop();
+
+        e = y - t;
+
+        loss += cross_entropy(y, t);
+        acc += accuracy(y, t);
+        batch += 1;
+
+        if(batch % 8 == 0) {
+          std::cerr << "#" << std::flush;
+        }
+
+        if((batch * batchsize) % n_train == 0) {
+          loss /= batch;
+          acc /= batch;
+
+          std::cerr << std::endl << loss << " " << acc << std::endl;
+
+          loss = 0.F;
+          acc = 0.F;
+          batch = 0;
+        }
+      }
+
+      MPI_Bcast(e.data(), e.size(), MPI_FLOAT, last, MPI_COMM_WORLD);
+
+      MatrixXf d_x(batchsize, cols);
+      MatrixXf d_W(rows, cols);
+
+      Eigen::MatrixXf x = x_queue.front();
+      Eigen::MatrixXf y = y_queue.front();
+      x_queue.pop();
+      y_queue.pop();
+
+      if(rank == last) {
+        d_x = e;
+      } else {
+        d_x = (e * B).array() * y.unaryExpr(&dsigmoid).array();
+      }
+
+      d_W = -x.transpose() * d_x;
+
+      W += d_W * lr;
+
+      for(int i = 0; i < d_x.cols(); ++i) {
+        b(i) += d_x.col(i).sum() * lr;
       }
     }
   }
