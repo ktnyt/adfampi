@@ -96,13 +96,20 @@ int main(int argc, char* argv[]) {
 
     // Load phase
     if(step < steps) {
+      if((batch * batchsize) % n_train == 0) {
+        shuffle(perm, perm + n_train);
+        mnist.reorder(perm);
+        batch = 0;
+      }
+
       if(rank == root) {
-        float* images = mnist.train_images.getBatch(step * batchsize, batchsize);
-        float* labels = mnist.train_labels.getBatch(step * batchsize, batchsize);
+        float* images = mnist.train_images.getBatch(batch * batchsize, batchsize);
+        float* labels = mnist.train_labels.getBatch(batch * batchsize, batchsize);
         std::copy(images, images + x.size(), x.data());
         MPI_Send(labels, label_count, MPI_FLOAT, last, 0, MPI_COMM_WORLD);
         delete[] images;
         delete[] labels;
+        batch += 1;
       }
 
       if(rank == last) {
