@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
 
   int root = 0;
   int last = size - 1;
-  int epochs = 1;
+  int epochs = 10;
   int batchsize = 100;
 
   float lr = 0.05;
@@ -193,8 +193,6 @@ int main(int argc, char* argv[]) {
       }
     }
   }
-
-  std::cout << rank << " done" << std::endl;
 
   delete[] perm;
   
