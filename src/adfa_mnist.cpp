@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
 
   int root = 0;
   int last = size - 1;
-  int epochs = 10;
+  int epochs = 1;
   int batchsize = 100;
 
   float lr = 0.05;
@@ -56,9 +56,9 @@ int main(int argc, char* argv[]) {
   float stdU = 1. / sqrt(static_cast<float>(cols));
   float stdB = 1. / sqrt(static_cast<float>(cats));
 
-  Normal genW(0, stdW);
-  Normal genU(0, stdU);
-  Normal genB(0, stdB);
+  Uniform genW(-stdW, stdW);
+  Uniform genU(-stdU, stdU);
+  Uniform genB(-stdB, stdB);
 
   MatrixXf W(rows, cols);
   MatrixXf U(cols, rows);
@@ -193,7 +193,8 @@ int main(int argc, char* argv[]) {
 
       d_W = -x.transpose() * d_x;
 
-      W += d_W * lr;
+      if(rank == last)
+        W += d_W * lr;
 
       for(int i = 0; i < d_x.cols(); ++i) {
         b(i) += d_x.col(i).sum() * lr;
@@ -202,6 +203,8 @@ int main(int argc, char* argv[]) {
   }
 
   delete[] perm;
+
+  //std::cout << rank << " " << x_queue.size() << " " << y_queue.size() << " " << t_queue.size() << std::endl;
   
   MPI_Finalize();
 
